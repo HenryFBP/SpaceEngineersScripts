@@ -34,12 +34,28 @@ namespace IngameScript
         // have to use the template if you don't want to. Just do so the first
         // time to see what a utility class looks like.
 
+        
+        public void Log(String s)
+        {
+            Echo(s);
+            return;
+        }
+
+        public void EchoI(String s, bool b)
+        {
+            if(b)
+            {
+                Echo(s);
+            }
+        }
 
         public String _LOG_STRING = "";
 
-        public const int _LCD_WIDTH = 53; //assuming you're using monospaced font
+        public const int _LCD_WIDTH = 26; //assuming you're using monospaced font on a 1-wide LCD
 
         public const String _GAUGE_DEF = ".+";
+
+        public const String _CAPS = "[]";
 
         public String _LCD_NAME =               "LCD Panel - Power Info";
         public String _LOGGING_LCD_NAME =       "LCD Panel - Debug";
@@ -49,12 +65,65 @@ namespace IngameScript
         public String _BATTERY_GROUP_NAME =     "battery group";
         public String _BATTERY_NAME =           "Battery";
 
+
+        /// <summary>
+        ///     Generate ASCII charge bar.
+        /// </summary>
+        /// <remarks>
+        ///     This function takes a length, a percent out of 100, and two start-end characters.
+        ///     It represents a filled ASCII bar of that length that represents the percent.
+        /// </remarks>
+        /// <example>
+        ///     Gauge(10, 67.3, {"-", "%"} returns "%%%%%%%---".
+        ///     Ten lines, seven filled for 67.3 percent. (It rounds half-round-down.)
+        /// </example>
+        public String Gauge(int length = _LCD_WIDTH, double percent = 50.0, String terms = _GAUGE_DEF, bool v = false)
+        {
+            EchoI($"Gauge function passed: length='{length}', percent='{percent}', terms='{terms}', v='{v}'.", v);
+
+            String ret = "";
+
+            double step = (100.0 / ((double)length)); //a single step. 5 lines has a step of 20, for example. {20, 40, 60, 80, 100}.
+
+            EchoI($"One step is '{step}' long.", v);
+
+            for (double i = 0; i < length; i++)
+            {
+                EchoI($"At the {i}th bar pip.", v);
+                EchoI("Checking if (step * i) > percent, aka", v);
+                EchoI($"         if {step * i} > {percent}.", v);
+
+                if ((step * i) > percent) //if we are in the empty region
+                {
+                    ret += terms[0];
+                }
+                else
+                {
+                    ret += terms[1];
+                }
+            }
+
+            EchoI($"Returning this string:\n'{ret}'\n", v);
+
+            return ret;
+        }
+
         /// <summary>
         /// Regex/stuff that is used to get info about battery blocks.
         /// To be used on "DetailedInfo" field.
         /// </summary>
-        public static class BAT_E
+        public class BATT_E
         {
+            public Program p = null;
+
+            public void Echo(String s) => p.Echo(s);
+            public void EchoI(String s, bool b) => p.EchoI(s,b);
+
+            public BATT_E(Program p)
+            {
+                this.p = p;
+            }
+
             public const String UNIT_SUFFIX =          @"(.)W(h|)";
             public const String ELECTR =               @"((\d+)(\.|)(\d+|))";
 
@@ -74,7 +143,126 @@ namespace IngameScript
             public const int CURRENT_INPUT_LOC =       4;
             public const int CURRENT_OUTPUT_LOC =      5;
             public const int STORED_POWER_LOC =        6;
-            public const int FULLY_RECHARGED_IN_LOC =  7;
+            public const int FULLY_RECHARGED_IN_LOC = 7;
+
+            /// <summary>
+            /// Gets units of electricity from a batt info string.
+            /// </summary>
+            /// <example>
+            /// "Stored Power: 2.64 MWh" -> {2,640,000}
+            /// </example>
+            /// <param name="electrStr"></param>
+            /// <returns></returns>
+            public double ExtractUnits(String electrStr, bool v = false)
+            {
+                double ret = -1;
+
+                System.Text.RegularExpressions.MatchCollection mc = System.Text.RegularExpressions.Regex.Matches(electrStr, BATT_E.ELECTR);
+
+                this.EchoI(MatchesToString(mc),v);
+
+                ret = double.Parse(mc[0].Groups[0].Value);
+
+                return ret;
+            }
+
+            /// <summary>
+            /// Get unit denominator from a batt info string.
+            /// </summary>
+            /// <example>
+            /// "Stored Power: 2.64 MWh" -> {'M'}
+            /// </example>
+            /// <param name="electrStr"></param>
+            /// <returns></returns>
+            public char ExtractSuffix(String electrStr, bool v = false)
+            {
+                char ret = '\0';
+
+                System.Text.RegularExpressions.MatchCollection mc = System.Text.RegularExpressions.Regex.Matches(electrStr, BATT_E.UNIT_SUFFIX);
+
+                if (v) //if debug mode
+                {
+                    this.Echo(MatchesToString(mc));
+                }
+
+                ret = (mc[0].Groups[1].Value.ToCharArray()[0]); //0th char of 1st matching group, the '.' before 'W(h|)'.
+
+                return ret;
+            }
+
+            /// <summary>
+            /// Return how much charge a battery has.
+            /// </summary>
+            /// <param name="b">A battery block.</param>
+            /// <returns></returns>
+            public double BatteryCharge(IMyBatteryBlock b, bool v = false)
+            {
+                double ret = -1.0;
+
+                double num = ExtractUnits(b?.DetailedInfo.Split('\n')[BATT_E.STORED_POWER_LOC], v);
+                char denom = ExtractSuffix(b?.DetailedInfo.Split('\n')[BATT_E.STORED_POWER_LOC], v);
+
+                ret = UNIT_E.PREFIX(num, denom);
+
+                return ret;
+            }
+
+            /// <summary>
+            /// Return how much max charge a battery can have.
+            /// </summary>
+            /// <param name="b">A battery block.</param>
+            /// <returns></returns>
+            public double BatteryMaxCharge(IMyBatteryBlock b, bool v = false)
+            {
+                double ret = -1.0;
+
+                double num = ExtractUnits(b?.DetailedInfo.Split('\n')[BATT_E.MAX_STORED_POWER_LOC], v);
+                char denom = ExtractSuffix(b?.DetailedInfo.Split('\n')[BATT_E.MAX_STORED_POWER_LOC], v);
+
+                ret = UNIT_E.PREFIX(num, denom);
+
+                return ret;
+            }
+
+            /// <summary>
+            /// Returns how long until one battery block is fully empty.
+            /// </summary>
+            /// <param name="b"></param>
+            /// <returns></returns>
+            public String BatteryTimeToEmpty(IMyBatteryBlock b)
+            {
+                String ret = "";
+
+                System.Text.RegularExpressions.MatchCollection mc = System.Text.RegularExpressions.Regex.Matches(b.DetailedInfo, BATT_E.FULLY_RECHARGED_IN);
+
+                foreach (System.Text.RegularExpressions.Match m in mc)
+                {
+                    ret = m.ToString();
+                }
+
+
+                return ret;
+            }
+            public String BatteryTimeToFull(IMyBatteryBlock b) => BatteryTimeToEmpty(b);
+
+
+            /// <summary>
+            /// Return an ASCII bar representing how full a battery is.
+            /// </summary>
+            /// <param name="b">The</param>
+            /// <param name="width"></param>
+            /// <returns></returns>
+            public String BatteryChargeBar(IMyBatteryBlock b, int width = _LCD_WIDTH, String terms = _GAUGE_DEF, bool v = false)
+            {
+                String ret = "";
+
+                double currPow = BatteryCharge(b);
+                double maxPow = BatteryMaxCharge(b);
+
+                ret = p.Gauge(width, (100*(currPow / maxPow)), terms, v);
+
+                return ret;
+            }
         }
 
         /// <summary>
@@ -82,14 +270,57 @@ namespace IngameScript
         /// </summary>
         public static class UNIT_E
         {
-            public const int MILL = 1000000;
-            public const int KILO = 1000;
+            public const int MILL =         1000000;
+            public const int KILO =         1000;
+            public const int UNCHANGED =    1;
 
             public const char MILL_C = 'M';
             public const char KILO_C = 'K';
+
+            /// <summary>
+            /// To convert those pesky {'m'} -> 1,000,000
+            /// </summary>
+            /// <param name="c">The unit prefix that represents the factor that it multiplies by.</param>
+            /// <returns>The factor.</returns>
+            public static double PREFIX(char c)
+            {
+                c = Char.ToUpper(c);
+
+                switch (c)
+                {
+                    case UNIT_E.MILL_C:
+                        return UNIT_E.MILL;
+
+                    case UNIT_E.KILO_C:
+                        return UNIT_E.KILO;
+                }
+                return UNIT_E.UNCHANGED;
+            }
+
+            /// <summary>
+            /// To convert those pesky {1.79, 'm'} -> 1,790,000
+            /// </summary>
+            public static double PREFIX(double i, char c) => (i * UNIT_E.PREFIX(c));
+
+            /// <summary>
+            /// To convert a number back into its unit-suffixed form.
+            /// </summary>
+            /// <example>
+            /// 2 340 000 -> "2.34 M"
+            /// </example>
+            public static String UNIT_UNPREFIX(double d)
+            {
+                String ret = "" + d;
+                if (d > UNIT_E.MILL)
+                {
+                    ret = ret + UNIT_E.MILL_C;
+                }
+                return ret;
+            }
+
         }
 
-        /// <summary>
+        /// <summary>   
         /// Return a human-readable string of all the regex matches in a MatchCollection.
         /// </summary>
         /// <param name="mc">A MatchCollection.</param>
@@ -112,48 +343,6 @@ namespace IngameScript
         }
 
         /// <summary>
-        /// To convert a number back into its unit-suffixed form.
-        /// </summary>
-        /// <example>
-        /// 2 340 000 -> "2.34 M"
-        /// </example>
-        public static String UNIT_UNPREFIX(double d)
-        {
-            String ret = ""+d;
-            if(d > UNIT_E.MILL)
-            {
-                ret = ret + UNIT_E.MILL_C;
-            }
-            return ret;
-        }
-
-        /// <summary>
-        /// To convert those pesky {'m'} -> 1,000,000
-        /// </summary>
-        /// <param name="c">The unit prefix that represents the factor that it multiplies by.</param>
-        /// <returns>The factor.</returns>
-        public static double UNIT_PREFIX(char c)
-        {
-            c = Char.ToUpper(c);
-
-            switch(c)
-            {
-                case UNIT_E.MILL_C:
-                    return UNIT_E.MILL;
-
-                case UNIT_E.KILO_C:
-                    return UNIT_E.KILO;
-            }
-            return 1.0;
-        }
-
-        /// <summary>
-        /// To convert those pesky {1.79, 'm'} -> 1,790,000
-        /// </summary>
-        public static double UNIT_PREFIX(double i, char c) => (i * UNIT_PREFIX(c));
-        
-
-        /// <summary>
         ///     Extend a char {c} out by {length} places.
         /// </summary>
         /// <example>
@@ -172,160 +361,8 @@ namespace IngameScript
             return ret;
         }
 
-        /// <summary>
-        ///     Generate ASCII charge bar.
-        /// </summary>
-        /// <remarks>
-        ///     This function takes a length, a percent out of 100, and two start-end characters.
-        ///     It represents a filled ASCII bar of that length that represents the percent.
-        /// </remarks>
-        /// <example>
-        ///     Gauge(10, 67.3, {"-", "%"} returns "%%%%%%%---".
-        ///     Ten lines, seven filled for 67.3 percent. (It rounds half-round-down.)
-        /// </example>
-        public String Gauge(int length, double percent, String terms = _GAUGE_DEF)
-        {
-
-            String ret = "";
-
-            int step = 100 / length; //a single step. 5 lines has a step of 20, for example. {20, 40, 60, 80, 100}.
-
-            for (int i = 0; i < length; i++)
-            {
-                if ((step * i) > percent)
-                {
-                    ret += terms[0];
-                }
-                else
-                {
-                    ret += terms[1];
-                }
-            }
-
-            return ret;
-        }
-
-        /// <summary>
-        /// Gets units of electricity from a batt info string.
-        /// </summary>
-        /// <example>
-        /// "Stored Power: 2.64 MWh" -> {2,640,000}
-        /// </example>
-        /// <param name="electrStr"></param>
-        /// <returns></returns>
-        public double ExtractUnits(String electrStr, bool v = false)
-        {
-            double ret = -1;
-
-            System.Text.RegularExpressions.MatchCollection mc = System.Text.RegularExpressions.Regex.Matches(electrStr, BAT_E.ELECTR);
-
-            if(v) //if debug mode
-            {
-                Echo(MatchesToString(mc));
-            }
-
-            ret = double.Parse(mc[0].Groups[0].Value);
-
-            return ret;
-        }
-
-        /// <summary>
-        /// Get unit denominator from a batt info string.
-        /// </summary>
-        /// <example>
-        /// "Stored Power: 2.64 MWh" -> {'M'}
-        /// </example>
-        /// <param name="electrStr"></param>
-        /// <returns></returns>
-        public char ExtractSuffix(String electrStr, bool v = false)
-        {
-            char ret = '\0';
-
-            System.Text.RegularExpressions.MatchCollection mc = System.Text.RegularExpressions.Regex.Matches(electrStr, BAT_E.UNIT_SUFFIX);
-
-            if (v) //if debug mode
-            {
-                Echo(MatchesToString(mc));
-            }
-
-            ret = (mc[0].Groups[1].Value.ToCharArray()[0]); //0th char of 1st matching group, the '.' before 'W(h|)'.
-
-            return ret;
-        }
-
-        /// <summary>
-        /// Return how much charge a battery has.
-        /// </summary>
-        /// <param name="b">A battery block.</param>
-        /// <returns></returns>
-        public double BatteryCharge(IMyBatteryBlock b, bool v = false)
-        {
-            double ret = -1.0;
-
-            double num = ExtractUnits(b?.DetailedInfo.Split('\n')[BAT_E.STORED_POWER_LOC], v);
-            char denom = ExtractSuffix(b?.DetailedInfo.Split('\n')[BAT_E.STORED_POWER_LOC], v);
-
-            ret = UNIT_PREFIX(num, denom);
-
-            return ret;
-        }
-
-        /// <summary>
-        /// Return how much max charge a battery can have.
-        /// </summary>
-        /// <param name="b">A battery block.</param>
-        /// <returns></returns>
-        public double BatteryMaxCharge(IMyBatteryBlock b, bool v = false)
-        {
-            double ret = -1.0;
-
-            double num = ExtractUnits(b?.DetailedInfo.Split('\n')[BAT_E.MAX_STORED_POWER_LOC], v);
-            char denom = ExtractSuffix(b?.DetailedInfo.Split('\n')[BAT_E.MAX_STORED_POWER_LOC], v);
-
-            ret = UNIT_PREFIX(num, denom);
-
-            return ret;
-        }
-
-        /// <summary>
-        /// Returns how long until one battery block is fully empty.
-        /// </summary>
-        /// <param name="b"></param>
-        /// <returns></returns>
-        public String BatteryTimeToEmpty(IMyBatteryBlock b)
-        {
-            String ret = "";
-
-            System.Text.RegularExpressions.MatchCollection mc = System.Text.RegularExpressions.Regex.Matches(b.DetailedInfo, BAT_E.FULLY_RECHARGED_IN);
-
-            foreach (System.Text.RegularExpressions.Match m in mc)
-            {
-                ret = m.ToString();
-            }
 
 
-            return ret;
-        }
-        public String BatteryTimeToFull(IMyBatteryBlock b) => BatteryTimeToEmpty(b);
-
-
-        /// <summary>
-        /// Return an ASCII bar representing 
-        /// </summary>
-        /// <param name="b"></param>
-        /// <param name="width"></param>
-        /// <returns></returns>
-        public String BatteryChargeBar(IMyBatteryBlock b, int width = _LCD_WIDTH, String gaugeDef = _GAUGE_DEF)
-        {
-            String ret = "";
-
-            double currPow = BatteryCharge(b);
-            double maxPow = BatteryMaxCharge(b);
-
-            ret = Gauge(width, (currPow/maxPow), gaugeDef);
-
-            return ret;
-        }
 
         /// <summary>
         ///     Return a {w}-wide long string to test the display width of a screen.
@@ -398,6 +435,9 @@ namespace IngameScript
         public void Main(string argument)
         {
 
+            BATT_E bATT_E = new BATT_E(this);
+
+
             // The main entry point of the script, invoked every time
             // one of the programmable block's Run actions are invoked.
             // 
@@ -406,11 +446,13 @@ namespace IngameScript
             
             Echo("Hi! I'm main!");
 
+            int my_lcd_width = _LCD_WIDTH * 2; //because we're using a 2-wide LCD.
+
             IMyReactor      reactor =   GridTerminalSystem?.GetBlockWithName(_REACTOR_NAME) as IMyReactor;
             IMyTextPanel    lcd =       GridTerminalSystem?.GetBlockWithName(_LCD_NAME) as IMyTextPanel;
             IMyTextPanel    lcdDebug =  GridTerminalSystem?.GetBlockWithName(_LOGGING_LCD_NAME) as IMyTextPanel;
             IMyBatteryBlock b =         GridTerminalSystem?.GetBlockWithName(_BATTERY_NAME) as IMyBatteryBlock;
-            String[] bS = b.DetailedInfo.Split('\n');
+            String[] battStr = b?.DetailedInfo.Split('\n');
 
             lcd?.WritePublicText("");
 
@@ -425,9 +467,14 @@ namespace IngameScript
             Echo(lcd?.GetPublicText());
 
             Echo("Getting time to empty for a battery....");
-            lcd?.WritePublicText(BatteryTimeToEmpty(b),true);
+            lcd?.WritePublicText(bATT_E.BatteryTimeToEmpty(b),true);
 
-            lcd?.WritePublicText(batter + " / " + bS[BAT_E.MAX_STORED_POWER_LOC], true);
+            lcd?.WritePublicText("\n"+battStr[BATT_E.STORED_POWER_LOC] + " / " + battStr[BATT_E.MAX_STORED_POWER_LOC], true);
+
+            lcd?.WritePublicText("\n"+
+                _CAPS[0] + 
+                bATT_E.BatteryChargeBar(b, (my_lcd_width - _CAPS.Length), v: true) +
+                _CAPS[1], true);
 
             flushLog(lcd);
 
