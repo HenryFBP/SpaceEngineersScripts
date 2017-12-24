@@ -124,26 +124,35 @@ namespace IngameScript
                 this.p = p;
             }
 
-            public const String UNIT_SUFFIX =          @"(.)W(h|)";
-            public const String ELECTR =               @"((\d+)(\.|)(\d+|))";
+            public const String UNIT_SUFFIX =           @"(.)W(h|)";
+            public const String NUMBER_VALUE =          @"((\d+)(\.|)(\d+|))";
 
-            public const String TYPE =                 @"Type: .*[\r\n]+";
-            public const String MAX_OUTPUT =           @"Max Output: .*[\r\n]+";
-            public const String MAX_REQUIRED_INPUT =   @"Max Required Input: (.*)[\r\n]+";
-            public const String MAX_STORED_POWER =     @"Max Stored Power: (.*)[\r\n]+";
-            public const String CURRENT_INPUT =        @"Current Input: (.*)[\r\n]+";
-            public const String CURRENT_OUTPUT =       @"Current Output: (.*)[\r\n]+";
-            public const String STORED_POWER =         @"Stored power: (.+?) (.)Wh[\r\n]+";
-            public const String FULLY_RECHARGED_IN =   @"Fully (.+?) in: (.*)";
+            public const String TYPE =                  @"Type: .*[\r\n]+";
+            public const String MAX_OUTPUT =            @"Max Output: .*[\r\n]+";
+            public const String MAX_REQUIRED_INPUT =    @"Max Required Input: (.*)[\r\n]+";
+            public const String MAX_STORED_POWER =      @"Max Stored Power: (.*)[\r\n]+";
+            public const String CURRENT_INPUT =         @"Current Input: (.*)[\r\n]+";
+            public const String CURRENT_OUTPUT =        @"Current Output: (.*)[\r\n]+";
+            public const String STORED_POWER =          @"Stored power: (.+?) (.)Wh[\r\n]+";
+            public const String FULLY_RECHARGED_IN =    @"Fully (.+?) in: (.*)";
 
-            public const int TYPE_LOC =                0;
-            public const int MAX_OUTPUT_LOC =          1;
-            public const int MAX_REQUIRED_INPUT_LOC =  2;
-            public const int MAX_STORED_POWER_LOC =    3;
-            public const int CURRENT_INPUT_LOC =       4;
-            public const int CURRENT_OUTPUT_LOC =      5;
-            public const int STORED_POWER_LOC =        6;
-            public const int FULLY_RECHARGED_IN_LOC = 7;
+            public const String TYPE_S =                @"Type: {0}";
+            public const String MAX_OUTPUT_S =          @"Max Output: {0}";
+            public const String MAX_REQUIRED_INPUT_S =  @"Max Required Input: {0}";
+            public const String MAX_STORED_POWER_S =    @"Max Stored Power: {0}";
+            public const String CURRENT_INPUT_S =       @"Current Input: {0}";
+            public const String CURRENT_OUTPUT_S =      @"Current Output: {0}";
+            public const String STORED_POWER_S =        @"Stored power: {0}";
+            public const String FULLY_RECHARGED_IN_S =  @"Fully {0} in: {1}";
+
+            public const int TYPE_LOC =                 0;
+            public const int MAX_OUTPUT_LOC =           1;
+            public const int MAX_REQUIRED_INPUT_LOC =   2;
+            public const int MAX_STORED_POWER_LOC =     3;
+            public const int CURRENT_INPUT_LOC =        4;
+            public const int CURRENT_OUTPUT_LOC =       5;
+            public const int STORED_POWER_LOC =         6;
+            public const int FULLY_RECHARGED_IN_LOC =   7;
 
             /// <summary>
             /// Gets units of electricity from a batt info string.
