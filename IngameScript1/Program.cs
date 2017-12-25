@@ -187,29 +187,29 @@ namespace IngameScript
             {
                 char ret = '\0';
 
+                //this.EchoI($"Extracting unit denominator from this batteryString: '{electrStr}'", v);
+
                 System.Text.RegularExpressions.MatchCollection mc = System.Text.RegularExpressions.Regex.Matches(electrStr, BATT_E.UNIT_SUFFIX);
 
-                if (v) //if debug mode
-                {
-                    this.Echo(MatchesToString(mc));
-                }
+                //this.EchoI(MatchesToString(mc),v);
 
                 ret = (mc[0].Groups[1].Value.ToCharArray()[0]); //0th char of 1st matching group, the '.' before 'W(h|)'.
 
                 return ret;
             }
 
+
             /// <summary>
-            /// Return how much charge a battery has.
+            /// Return the max output for a battery.
             /// </summary>
             /// <param name="b">A battery block.</param>
             /// <returns></returns>
-            public double BatteryCharge(IMyBatteryBlock b, bool v = false)
+            public double BatteryMaxOutput(IMyBatteryBlock b, bool v = false)
             {
                 double ret = -1.0;
 
-                double num = ExtractUnits(b?.DetailedInfo.Split('\n')[BATT_E.STORED_POWER_LOC], v);
-                char denom = ExtractSuffix(b?.DetailedInfo.Split('\n')[BATT_E.STORED_POWER_LOC], v);
+                double num = ExtractUnits(b?.DetailedInfo.Split('\n')[BATT_E.MAX_OUTPUT_LOC], v);
+                char denom = ExtractSuffix(b?.DetailedInfo.Split('\n')[BATT_E.MAX_OUTPUT_LOC], v);
 
                 ret = UNIT_E.PREFIX(num, denom);
 
@@ -217,11 +217,64 @@ namespace IngameScript
             }
 
             /// <summary>
-            /// Return how much max charge a battery can have.
+            /// Return the max output for a block group's batteries.
+            /// </summary>
+            /// <param name="bb">The List of batteries.</param>
+            /// <returns></returns>
+            public double BatteriesMaxOutput(List<IMyBatteryBlock> bb, bool v = false)
+            {
+                double ret = -1.0;
+                
+                foreach (IMyBatteryBlock b in bb)
+                {
+                    ret += this.BatteryMaxOutput(b, v);
+                }
+
+                return ret;
+            }
+
+
+            /// <summary>
+            /// Return the max required input for a battery.
             /// </summary>
             /// <param name="b">A battery block.</param>
             /// <returns></returns>
-            public double BatteryMaxCharge(IMyBatteryBlock b, bool v = false)
+            public double BatteryMaxRequiredInput(IMyBatteryBlock b, bool v = false)
+            {
+                double ret = -1.0;
+
+                double num = ExtractUnits(b?.DetailedInfo.Split('\n')[BATT_E.MAX_REQUIRED_INPUT_LOC], v);
+                char denom = ExtractSuffix(b?.DetailedInfo.Split('\n')[BATT_E.MAX_REQUIRED_INPUT_LOC], v);
+
+                ret = UNIT_E.PREFIX(num, denom);
+
+                return ret;
+            }
+
+            /// <summary>
+            /// Return the max required input for a block group's batteries.
+            /// </summary>
+            /// <param name="bb">The List of batteries.</param>
+            /// <returns></returns>
+            public double BatteriesMaxRequiredInput(List<IMyBatteryBlock> bb, bool v = false)
+            {
+                double ret = -1.0;
+
+                foreach (IMyBatteryBlock b in bb)
+                {
+                    ret += this.BatteryMaxRequiredInput(b, v);
+                }
+
+                return ret;
+            }
+
+
+            /// <summary>
+            /// Return the max stored power for a battery.
+            /// </summary>
+            /// <param name="b">A battery block.</param>
+            /// <returns></returns>
+            public double BatteryMaxStoredPower(IMyBatteryBlock b, bool v = false)
             {
                 double ret = -1.0;
 
@@ -234,11 +287,136 @@ namespace IngameScript
             }
 
             /// <summary>
-            /// Returns how long until one battery block is fully empty.
+            /// Return the max stored power for a block group's batteries.
             /// </summary>
-            /// <param name="b"></param>
+            /// <param name="bb">The List of batteries.</param>
             /// <returns></returns>
-            public String BatteryTimeToEmpty(IMyBatteryBlock b)
+            public double BatteriesMaxStoredPower(List<IMyBatteryBlock> bb, bool v = false)
+            {
+                double ret = -1.0;
+
+                foreach (IMyBatteryBlock b in bb)
+                {
+                    ret += this.BatteryMaxStoredPower(b, v);
+                }
+
+                return ret;
+            }
+
+
+            /// <summary>
+            /// Return how much stored power a battery has.
+            /// </summary>
+            /// <param name="b">A battery block.</param>
+            /// <returns></returns>
+            public double BatteryStoredPower(IMyBatteryBlock b, bool v = false)
+            {
+                double ret = -1.0;
+
+                double num = ExtractUnits(b?.DetailedInfo.Split('\n')[BATT_E.STORED_POWER_LOC], v);
+                char denom = ExtractSuffix(b?.DetailedInfo.Split('\n')[BATT_E.STORED_POWER_LOC], v);
+
+                ret = UNIT_E.PREFIX(num, denom);
+
+                return ret;
+            }
+
+            /// <summary>
+            /// Return how much stored power a block group's batteries has.
+            /// </summary>
+            /// <param name="bb">The List of batteries.</param>
+            /// <returns></returns>
+            public double BatteriesStoredPower(List<IMyBatteryBlock> bb, bool v = false)
+            {
+                double ret = -1.0;
+
+                foreach (IMyBatteryBlock b in bb)
+                {
+                    ret += this.BatteryStoredPower(b, v);
+                }
+
+                return ret;
+            }
+
+
+            /// <summary>
+            /// Return the current input for a battery.
+            /// </summary>
+            /// <param name="b">A battery block.</param>
+            /// <returns></returns>
+            public double BatteryCurrentInput(IMyBatteryBlock b, bool v = false)
+            {
+                double ret = -1.0;
+
+                //EchoI($"Getting current input as a number for battery named '{b.Name}'...", v);
+
+                double num = ExtractUnits(b?.DetailedInfo.Split('\n')[BATT_E.CURRENT_INPUT_LOC], v);
+                char denom = ExtractSuffix(b?.DetailedInfo.Split('\n')[BATT_E.CURRENT_INPUT_LOC], v);
+
+                ret = UNIT_E.PREFIX(num, denom, v);
+
+                return ret;
+            }
+
+            /// <summary>
+            /// Return the current input for a block group's batteries.
+            /// </summary>
+            /// <param name="bb">The List of batteries.</param>
+            /// <returns></returns>
+            public double BatteriesCurrentInput(List<IMyBatteryBlock> bb, bool v = false)
+            {
+                double ret = -1.0;
+
+                foreach (IMyBatteryBlock b in bb)
+                {
+                    ret += this.BatteryCurrentInput(b, v);
+                }
+
+                return ret;
+            }
+
+
+            /// <summary>
+            /// Return the current output for a battery.
+            /// </summary>
+            /// <param name="b">A battery block.</param>
+            /// <returns></returns>
+            public double BatteryCurrentOutput(IMyBatteryBlock b, bool v = false)
+            {
+                double ret = -1.0;
+
+                double num = ExtractUnits(b?.DetailedInfo.Split('\n')[BATT_E.CURRENT_OUTPUT_LOC], v);
+                char denom = ExtractSuffix(b?.DetailedInfo.Split('\n')[BATT_E.CURRENT_OUTPUT_LOC], v);
+
+                ret = UNIT_E.PREFIX(num, denom);
+
+                return ret;
+            }
+
+            /// <summary>
+            /// Return the current output for a block group's batteries.
+            /// </summary>
+            /// <param name="bb">The List of batteries.</param>
+            /// <returns></returns>
+            public double BatteriesCurrentOutput(List<IMyBatteryBlock> bb, bool v = false)
+            {
+                double ret = -1.0;
+
+                foreach (IMyBatteryBlock b in bb)
+                {
+                    ret += this.BatteryCurrentOutput(b, v);
+                }
+
+                return ret;
+            }
+
+
+            /// <summary>
+            /// Returns how long until one battery block is fully empty or full.
+            /// </summary>
+            /// <param name="b">The battery.</param>
+            /// <returns></returns>
+            public String BatteryTimeToEmpty(IMyBatteryBlock b, bool v = false)
             {
                 String ret = "";
 
@@ -248,30 +426,73 @@ namespace IngameScript
                 {
                     ret = m.ToString();
                 }
-
-
+                
                 return ret;
             }
-            public String BatteryTimeToFull(IMyBatteryBlock b) => BatteryTimeToEmpty(b);
+            public String BatteryTimeToFull(IMyBatteryBlock b, bool v = false) => BatteryTimeToEmpty(b, v);
+
+            /// <summary>
+            /// Returns how long until a list of battery blocks is fully empty or full.
+            /// </summary>
+            /// <param name="bb"></param>
+            /// <param name="v"></param>
+            /// <returns></returns>
+            public String BatteriesTimeToEmpty(List<IMyBatteryBlock> bb, bool v = false)
+            {
+                return @"UNIMP, soz :'( Maybe once I parse dates it'll be easier?";
+            }
+            /// <summary>
+            /// See <see cref="BatteriesTimeToEmpty(List{IMyBatteryBlock}, bool)"/>.
+            /// </summary>
+            public String BatteriesTimeToFull(List<IMyBatteryBlock> bb, bool v = false) => BatteriesTimeToEmpty(bb, v);
 
 
             /// <summary>
             /// Return an ASCII bar representing how full a battery is.
             /// </summary>
-            /// <param name="b">The</param>
-            /// <param name="width"></param>
-            /// <returns></returns>
-            public String BatteryChargeBar(IMyBatteryBlock b, int width = _LCD_WIDTH, String terms = _GAUGE_DEF, bool v = false)
+            /// <param name="b">The battery.</param>
+            /// <param name="width">How wide the bar will be.</param>
+            /// <returns>An ASCII-art bar.</returns>
+            public String BatteryChargeBar(IMyBatteryBlock b, int width = U_LCD_WIDTH, String terms = _GAUGE_DEF, bool v = false)
             {
+                return p.Gauge(width, (100 * (this.BatteryStoredPower(b) / this.BatteryMaxStoredPower(b))), terms, v);
+            }
+
+
+            /// <summary>
+            /// Return an ASCII bar representing how full a battery group is.
+            /// </summary>
+            /// <param name="bg">The battery group.</param>
+            /// <param name="width">How wide the bar will be.</param>
+            /// <returns>An ASCII-art bar.</returns>
+            public String BatteriesChargeBar(List<IMyBatteryBlock> bb, int width = U_LCD_WIDTH, String terms = _GAUGE_DEF, bool v = false)
+            {
+                return p.Gauge(width, (100 * (BatteriesStoredPower(bb) / BatteriesMaxStoredPower(bb))), terms, v);
+            }
+
+            /// <summary>
+            /// Return a detailedInfo value for ALL batteries in a block group.
+            /// </summary>
+            /// <param name="bb">The blockGroup.</param>
+            /// <param name="v">Verbose?</param>
+            /// <returns>A detailedInfo String.</returns>
+            public String DetailedInfos(List<IMyBatteryBlock> bb, bool v = false)
+            {
+                EchoI($"Getting detailedInfo string for ALL '{bb.Count}' batteries...whew...",v);
                 String ret = "";
 
-                double currPow = BatteryCharge(b);
-                double maxPow = BatteryMaxCharge(b);
-
-                ret = p.Gauge(width, (100*(currPow / maxPow)), terms, v);
-
+                ret += "Type: Battery\n";
+                ret += String.Format(BATT_E.MAX_OUTPUT_S,               UNIT_E.UNPREFIX(this.BatteriesMaxOutput(bb,v))) + "\n";
+                ret += String.Format(BATT_E.MAX_REQUIRED_INPUT_S,       UNIT_E.UNPREFIX(this.BatteriesMaxRequiredInput(bb,v))) + "\n";
+                ret += String.Format(BATT_E.MAX_STORED_POWER_S,         UNIT_E.UNPREFIX(this.BatteriesMaxStoredPower(bb,v))) + "\n";
+                ret += String.Format(BATT_E.CURRENT_INPUT_S,            UNIT_E.UNPREFIX(this.BatteriesCurrentInput(bb,v))) + "\n";
+                ret += String.Format(BATT_E.CURRENT_OUTPUT_S,           UNIT_E.UNPREFIX(this.BatteriesCurrentOutput(bb,v))) + "\n";
+                ret += String.Format(BATT_E.STORED_POWER_S,             UNIT_E.UNPREFIX(this.BatteriesStoredPower(bb,v))) + "\n";
+                ret += String.Format(BATT_E.FULLY_RECHARGED_IN_S,@"aww",@"shucks") +     @"UNIMPL, SOZ :("; 
+                
                 return ret;
             }
+
         }
 
         /// <summary>
