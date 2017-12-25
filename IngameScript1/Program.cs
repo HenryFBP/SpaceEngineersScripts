@@ -34,7 +34,22 @@ namespace IngameScript
         // have to use the template if you don't want to. Just do so the first
         // time to see what a utility class looks like.
 
+
+
+        public String _LOG_STRING = "";
+
+        //CHANGE ME IF YOU LIKE. By default, with the font I use, this is {26}.
+        public const int            U_LCD_WIDTH =           LCD_E.ONE_LCD_PANE;
         
+        public const String         U_LCD_NAME =            "LCD Panel - Power Info";
+        public const String         U_LOGGING_LCD_NAME =    "LCD Panel - Debug";
+
+        public const String         U_REACTOR_NAME =        "Nuclear Reactor";
+
+        public const String         U_BATTERY_GROUP_NAME =  "Batteries";
+        public const String         U_BATTERY_NAME =        "Battery";
+
+
         public void Log(String s)
         {
             Echo(s);
@@ -49,21 +64,19 @@ namespace IngameScript
             }
         }
 
-        public String _LOG_STRING = "";
+        /// <summary>
+        /// Enum for LCD width. Assuming using monospace font.
+        /// </summary>
+        public class LCD_E
+        {
+            public const int ONE_LCD_PANE = 26; //assuming monospaced font
+            public const int TWO_LCD_PANE = ONE_LCD_PANE * 2;
+        }
 
-        public const int _LCD_WIDTH = 26; //assuming you're using monospaced font on a 1-wide LCD
 
         public const String _GAUGE_DEF = ".+";
 
         public const String _CAPS = "[]";
-
-        public String _LCD_NAME =               "LCD Panel - Power Info";
-        public String _LOGGING_LCD_NAME =       "LCD Panel - Debug";
-
-        public String _REACTOR_NAME =           "Nuclear Reactor";
-
-        public String _BATTERY_GROUP_NAME =     "battery group";
-        public String _BATTERY_NAME =           "Battery";
 
 
         /// <summary>
@@ -77,7 +90,7 @@ namespace IngameScript
         ///     Gauge(10, 67.3, {"-", "%"} returns "%%%%%%%---".
         ///     Ten lines, seven filled for 67.3 percent. (It rounds half-round-down.)
         /// </example>
-        public String Gauge(int length = _LCD_WIDTH, double percent = 50.0, String terms = _GAUGE_DEF, bool v = false)
+        public String Gauge(int length = U_LCD_WIDTH, double percent = 50.0, String terms = _GAUGE_DEF, bool v = false)
         {
             EchoI($"Gauge function passed: length='{length}', percent='{percent}', terms='{terms}', v='{v}'.", v);
 
@@ -107,6 +120,8 @@ namespace IngameScript
 
             return ret;
         }
+
+
 
         /// <summary>
         /// Regex/stuff that is used to get info about battery blocks.
@@ -154,6 +169,8 @@ namespace IngameScript
             public const int STORED_POWER_LOC =         6;
             public const int FULLY_RECHARGED_IN_LOC =   7;
 
+
+
             /// <summary>
             /// Gets units of electricity from a batt info string.
             /// </summary>
@@ -166,9 +183,11 @@ namespace IngameScript
             {
                 double ret = -1;
 
-                System.Text.RegularExpressions.MatchCollection mc = System.Text.RegularExpressions.Regex.Matches(electrStr, BATT_E.ELECTR);
+                //this.EchoI($"Extracting numerical units from this batteryString: '{electrStr}'", v);
 
-                this.EchoI(MatchesToString(mc),v);
+                System.Text.RegularExpressions.MatchCollection mc = System.Text.RegularExpressions.Regex.Matches(electrStr, BATT_E.NUMBER_VALUE);
+
+                //this.EchoI(MatchesToString(mc),v);
 
                 ret = double.Parse(mc[0].Groups[0].Value);
 
@@ -512,7 +531,7 @@ namespace IngameScript
             /// </summary>
             /// <param name="c">The unit prefix that represents the factor that it multiplies by.</param>
             /// <returns>The factor.</returns>
-            public static double PREFIX(char c)
+            public static double PREFIX(char c, bool v = false)
             {
                 c = Char.ToUpper(c);
 
@@ -530,7 +549,7 @@ namespace IngameScript
             /// <summary>
             /// To convert those pesky {1.79, 'm'} -> 1,790,000
             /// </summary>
-            public static double PREFIX(double i, char c) => (i * UNIT_E.PREFIX(c));
+            public static double PREFIX(double i, char c, bool v = false) => (i * UNIT_E.PREFIX(c,v));
 
             /// <summary>
             /// To convert a number back into its unit-suffixed form.
@@ -538,13 +557,18 @@ namespace IngameScript
             /// <example>
             /// 2 340 000 -> "2.34 M"
             /// </example>
-            public static String UNIT_UNPREFIX(double d)
+            public static String UNPREFIX(double d)
             {
                 String ret = "" + d;
                 if (d > UNIT_E.MILL)
                 {
-                    ret = ret + UNIT_E.MILL_C;
+                    ret += UNIT_E.MILL_C;
                 }
+                else if(d > UNIT_E.KILO)
+                {
+                    ret += UNIT_E.KILO_C; 
+                }
+                
                 return ret;
             }
 
@@ -676,13 +700,18 @@ namespace IngameScript
             
             Echo("Hi! I'm main!");
 
-            int my_lcd_width = _LCD_WIDTH * 2; //because we're using a 2-wide LCD.
+            IMyReactor      reactor =       GridTerminalSystem?.GetBlockWithName(U_REACTOR_NAME) as IMyReactor;
+            IMyTextPanel    lcd =           GridTerminalSystem?.GetBlockWithName(U_LCD_NAME) as IMyTextPanel;
+            IMyTextPanel    lcdDebug =      GridTerminalSystem?.GetBlockWithName(U_LOGGING_LCD_NAME) as IMyTextPanel;
+            IMyBatteryBlock b =             GridTerminalSystem?.GetBlockWithName(U_BATTERY_NAME) as IMyBatteryBlock;
+            IMyBlockGroup   bg =            GridTerminalSystem?.GetBlockGroupWithName(U_BATTERY_GROUP_NAME);
 
-            IMyReactor      reactor =   GridTerminalSystem?.GetBlockWithName(_REACTOR_NAME) as IMyReactor;
-            IMyTextPanel    lcd =       GridTerminalSystem?.GetBlockWithName(_LCD_NAME) as IMyTextPanel;
-            IMyTextPanel    lcdDebug =  GridTerminalSystem?.GetBlockWithName(_LOGGING_LCD_NAME) as IMyTextPanel;
-            IMyBatteryBlock b =         GridTerminalSystem?.GetBlockWithName(_BATTERY_NAME) as IMyBatteryBlock;
-            String[] battStr = b?.DetailedInfo.Split('\n');
+            List<IMyBatteryBlock> batteryList = new List<IMyBatteryBlock>();
+            bg.GetBlocksOfType<IMyBatteryBlock>(batteryList); //add all found battery blocks to this list
+            Echo($"Made list of batteries. it is '{batteryList.Count}' big.");
+
+
+            String[] battStr = bATT_E.DetailedInfos(batteryList, true).Split('\n');
 
             lcd?.WritePublicText("");
 
@@ -699,11 +728,25 @@ namespace IngameScript
             Echo("Getting time to empty for a battery....");
             lcd?.WritePublicText(bATT_E.BatteryTimeToEmpty(b),true);
 
-            lcd?.WritePublicText("\n"+battStr[BATT_E.STORED_POWER_LOC] + " / " + battStr[BATT_E.MAX_STORED_POWER_LOC], true);
+            lcd?.WritePublicText("\n" + battStr[BATT_E.STORED_POWER_LOC], true);
+
+            if(U_LCD_WIDTH < LCD_E.TWO_LCD_PANE) //if it'll be too short...
+            {
+                lcd?.WritePublicText("\n",true);
+            }
+
+            lcd?.WritePublicText(" / ", true);
+
+            if (U_LCD_WIDTH < LCD_E.TWO_LCD_PANE) //if it'll be too short...
+            {
+                lcd?.WritePublicText("\n", true);
+            }
+
+            lcd?.WritePublicText(battStr[BATT_E.MAX_STORED_POWER_LOC], true);
 
             lcd?.WritePublicText("\n"+
                 _CAPS[0] + 
-                bATT_E.BatteryChargeBar(b, (my_lcd_width - _CAPS.Length), v: true) +
+                bATT_E.BatteriesChargeBar(batteryList, (U_LCD_WIDTH - _CAPS.Length), v: true) +
                 _CAPS[1], true);
 
             flushLog(lcd);
