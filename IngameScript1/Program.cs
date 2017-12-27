@@ -50,12 +50,6 @@ namespace IngameScript
         public const String         U_BATTERY_NAME =        "Battery";
 
 
-        public void Log(String s)
-        {
-            Echo(s);
-            return;
-        }
-
         public void EchoI(String s, bool b)
         {
             if(b)
@@ -649,15 +643,31 @@ namespace IngameScript
             return retS;
         }
 
-        public String Log(String s, String nl = "\n")
+        /// <summary>
+        /// Logs a string to an LCD.
+        /// </summary>
+        /// <param name="s"></param>
+        /// <param name="nl"></param>
+        /// <returns></returns>
+        public String Log(String s, IMyTextPanel l, String nl = "\n", bool append = true)
         {
-            _LOG_STRING += (s + nl);
-            return (s + nl);
+            s = $"[{GetTime()}]: {s}";
+            l?.WritePublicText(s+nl, append);
+            return s+nl;
         }
 
         public void flushLog(IMyTextPanel t, bool append = true)
         {
             t?.WritePublicText(_LOG_STRING, append);
+        }
+
+        /// <summary>
+        /// Return the current HH:MM:SS tt.
+        /// </summary>
+        public String GetTime()
+        {
+            var n = DateTime.Now;
+            return $"{n.Hour.ToString("D2")}:{n.Minute.ToString("D2")}:{n.Second.ToString("D2")} {n.ToString("tt",System.Globalization.CultureInfo.InvariantCulture)}";
         }
 
 
@@ -700,11 +710,15 @@ namespace IngameScript
             
             Echo("Hi! I'm main!");
 
+
             IMyReactor      reactor =       GridTerminalSystem?.GetBlockWithName(U_REACTOR_NAME) as IMyReactor;
             IMyTextPanel    lcd =           GridTerminalSystem?.GetBlockWithName(U_LCD_NAME) as IMyTextPanel;
             IMyTextPanel    lcdDebug =      GridTerminalSystem?.GetBlockWithName(U_LOGGING_LCD_NAME) as IMyTextPanel;
             IMyBatteryBlock b =             GridTerminalSystem?.GetBlockWithName(U_BATTERY_NAME) as IMyBatteryBlock;
             IMyBlockGroup   bg =            GridTerminalSystem?.GetBlockGroupWithName(U_BATTERY_GROUP_NAME);
+
+            Log("Testing the logging function...", lcdDebug);
+
 
             List<IMyBatteryBlock> batteryList = new List<IMyBatteryBlock>();
             bg.GetBlocksOfType<IMyBatteryBlock>(batteryList); //add all found battery blocks to this list
@@ -716,6 +730,7 @@ namespace IngameScript
             lcd?.WritePublicText("");
 
             Echo($"Gauge for 10 wide, 56%, and {_GAUGE_DEF[0]} = empty, {_GAUGE_DEF[1]} = full:");
+
 
             Echo(Gauge(10, 56, _GAUGE_DEF));
 
@@ -748,8 +763,6 @@ namespace IngameScript
                 _CAPS[0] + 
                 bATT_E.BatteriesChargeBar(batteryList, (U_LCD_WIDTH - _CAPS.Length), v: true) +
                 _CAPS[1], true);
-
-            flushLog(lcd);
 
         }
     }
